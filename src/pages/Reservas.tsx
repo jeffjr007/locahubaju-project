@@ -14,6 +14,16 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { format } from "date-fns";
@@ -55,6 +65,10 @@ export default function Reservas() {
   const [telefone, setTelefone] = useState("");
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [showProfileForm, setShowProfileForm] = useState(false);
+  
+  // Estado para confirmação de cancelamento
+  const [reservationToCancel, setReservationToCancel] = useState<string | null>(null);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   // Verificar se precisa preencher perfil
   useEffect(() => {
@@ -180,8 +194,10 @@ export default function Reservas() {
   }) => {
     const webhookUrl = import.meta.env.VITE_N8N_WEBHOOKCANCEL_URL;
     
+    console.log("🔔 Webhook de cancelamento - Verificando URL:", webhookUrl ? "Configurada" : "Não configurada");
+    
     if (!webhookUrl) {
-      console.warn("Webhook URL de cancelamento do n8n não configurada");
+      console.warn("⚠️ Webhook URL de cancelamento do n8n não configurada (VITE_N8N_WEBHOOKCANCEL_URL)");
       return;
     }
 
@@ -206,6 +222,8 @@ export default function Reservas() {
         acao: "cancelada",
       };
 
+      console.log("📤 Enviando webhook de cancelamento:", payload);
+
       const response = await fetch(webhookUrl, {
         method: "POST",
         headers: {
@@ -217,9 +235,11 @@ export default function Reservas() {
       if (!response.ok) {
         throw new Error(`Webhook falhou: ${response.statusText}`);
       }
+
+      console.log("✅ Webhook de cancelamento enviado com sucesso");
     } catch (error) {
       // Não mostrar erro para o usuário, apenas logar
-      console.error("Erro ao acionar webhook de cancelamento do n8n:", error);
+      console.error("❌ Erro ao acionar webhook de cancelamento do n8n:", error);
     }
   };
 
@@ -311,18 +331,27 @@ export default function Reservas() {
     }
   };
 
-  const handleCancelReservation = async (reservationId: string) => {
+  const handleCancelClick = (reservationId: string) => {
+    setReservationToCancel(reservationId);
+    setShowCancelDialog(true);
+  };
+
+  const handleCancelReservation = async () => {
+    if (!reservationToCancel) return;
+
     try {
       // Buscar os dados completos da reserva antes de cancelar
-      const reservation = reservations?.find(r => r.id === reservationId);
+      const reservation = reservations?.find(r => r.id === reservationToCancel);
       
       if (!reservation) {
         toast.error("Reserva não encontrada");
+        setShowCancelDialog(false);
+        setReservationToCancel(null);
         return;
       }
 
       // Cancelar a reserva
-      await cancelReservation.mutateAsync(reservationId);
+      await cancelReservation.mutateAsync(reservationToCancel);
 
       // Se o usuário tem telefone e perfil, acionar webhook de cancelamento
       if (profile?.telefone && profile?.nome && reservation.spaces) {
@@ -335,6 +364,12 @@ export default function Reservas() {
 
         // Buscar informações completas do espaço
         const spaceData = spaces?.find(s => s.id === reservation.space_id);
+
+        console.log("Acionando webhook de cancelamento...", {
+          reservationId: reservation.id,
+          nome: profile.nome,
+          telefone: profile.telefone,
+        });
 
         await triggerN8nCancelWebhook({
           reservationId: reservation.id,
@@ -354,11 +389,22 @@ export default function Reservas() {
           horarioCompleto: horarioCompleto,
           notes: "",
         });
+      } else {
+        console.warn("Webhook de cancelamento não acionado:", {
+          hasProfile: !!profile,
+          hasTelefone: !!profile?.telefone,
+          hasNome: !!profile?.nome,
+          hasSpaces: !!reservation.spaces,
+        });
       }
 
       toast.success("Reserva cancelada com sucesso");
+      setShowCancelDialog(false);
+      setReservationToCancel(null);
     } catch (error: any) {
       toast.error("Erro ao cancelar reserva: " + error.message);
+      setShowCancelDialog(false);
+      setReservationToCancel(null);
     }
   };
 
@@ -691,7 +737,7 @@ export default function Reservas() {
                           variant="ghost"
                           size="sm"
                           className="text-destructive hover:text-destructive hover:bg-destructive/10 w-full"
-                          onClick={() => handleCancelReservation(reservation.id)}
+                          onClick={() => handleCancelClick(reservation.id)}
                           disabled={cancelReservation.isPending}
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
@@ -715,6 +761,54 @@ export default function Reservas() {
           </div>
         </div>
       </section>
+
+      {/* Dialog de Confirmação de Cancelamento */}
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar Reserva?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja cancelar esta reserva? Esta ação não pode ser desfeita.
+              {reservationToCancel && (() => {
+                const reservation = reservations?.find(r => r.id === reservationToCancel);
+                if (reservation) {
+                  return (
+                    <div className="mt-4 p-3 bg-muted rounded-lg">
+                      <p className="font-semibold text-sm mb-2">{reservation.spaces?.nome}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(reservation.data_inicio), "dd/MM/yyyy")} - {format(new Date(reservation.data_inicio), "HH:mm")} às {format(new Date(reservation.data_fim), "HH:mm")}
+                      </p>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowCancelDialog(false);
+              setReservationToCancel(null);
+            }}>
+              Não, manter reserva
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancelReservation}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={cancelReservation.isPending}
+            >
+              {cancelReservation.isPending ? (
+                <span className="flex items-center gap-2">
+                  <span className="animate-spin rounded-full h-4 w-4 border-2 border-destructive-foreground border-t-transparent" />
+                  Cancelando...
+                </span>
+              ) : (
+                "Sim, cancelar reserva"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }
