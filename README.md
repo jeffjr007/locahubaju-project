@@ -228,7 +228,7 @@ O sistema está integrado com n8n para envio automático de notificações via W
 ### Configuração do Telefone
 
 **⚠️ IMPORTANTE:** O telefone deve estar no formato correto para o envio funcionar:
-- ✅ **Formato correto:** `79 988226170` (DDD + espaço + número)
+- ✅ **Formato correto:** `79988226170` (DDD + número)
 - ❌ **Formatos incorretos:** 
   - `(79) 98822-6170`
   - `79988226170`
