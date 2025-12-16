@@ -12,7 +12,7 @@ O LocaHubAju é uma plataforma web moderna e intuitiva para gerenciamento e loca
 
 ### Principais
 - ✅ **Cadastro e listagem de espaços** - Sistema completo de gerenciamento de espaços disponíveis para locação
-- ✅ **Cadastro de usuários/clientes** - Sistema de autenticação com perfil completo (nome, email, telefone)
+- ✅ **Cadastro de usuários/clientes** - Sistema de autenticação com perfil completo (nome, email, telefone) - OBS: Confirmação de email desativada para facilitar testes.
 - ✅ **Registro de reservas** - Sistema de reservas com verificação automática de conflitos de horário
 - ✅ **Visualização da agenda** - Agenda de ocupação dos espaços com visualização por dia e semana
 - ✅ **Interface gráfica intuitiva** - Design moderno, responsivo e fácil de usar
@@ -57,7 +57,7 @@ O sistema está disponível online em: **[https://locahubaju.vercel.app/](https:
      - **Nome completo** (obrigatório)
      - **Email** (obrigatório)
      - **Telefone** (obrigatório) - **Importante:** Use o formato correto: DDD + número sem parênteses ou traços
-       - ✅ Formato correto: `79 988226170`
+       - ✅ Formato correto: `79988226170`
        - ❌ Formato incorreto: `(79) 98822-6170` ou `79988226170`
      - **Senha** (mínimo 6 caracteres)
 
@@ -234,14 +234,13 @@ O sistema está integrado com n8n para envio automático de notificações via W
   - `79988226170`
   - `+55 79 98822-6170`
 
-O sistema valida o formato durante o cadastro, mas é importante seguir o padrão: **DDD + espaço + número completo**.
+O sistema valida o formato durante o cadastro, mas é importante seguir o padrão: **DDD + número completo**.
 
 ## 🔐 Segurança
 
 - Row Level Security (RLS) habilitado em todas as tabelas
 - Políticas de segurança configuradas:
   - Usuários só veem suas próprias reservas
-  - Apenas admins podem gerenciar espaços
   - Validação de conflitos de horário no banco de dados
   - Triggers para criação automática de perfis
 
