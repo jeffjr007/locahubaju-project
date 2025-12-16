@@ -188,6 +188,9 @@ npm run preview
 
 O sistema está integrado com n8n para envio automático de notificações via WhatsApp.
 
+<img width="1153" height="410" alt="image" src="https://github.com/user-attachments/assets/024bae43-62ae-4add-9005-cda7e7c51bb5" />
+
+
 ### Como Funciona
 
 1. **Acionamento do Webhook**
