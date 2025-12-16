@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Eye, EyeOff, Loader2, Mail, Lock, User, Sparkles, Phone } from "lucide-react";
 import { z } from "zod";
+import logoIcon from "@/assets/icone.png";
 
 const loginSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -106,8 +107,12 @@ export default function Auth() {
         <div className="w-full max-w-md">
           {/* Logo */}
           <div className="flex items-center gap-2 mb-8">
-            <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center shadow-glow">
-              <span className="text-primary-foreground font-bold text-2xl">L</span>
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-glow overflow-hidden">
+              <img 
+                src={logoIcon} 
+                alt="LocaHubAju Logo" 
+                className="w-full h-full object-contain"
+              />
             </div>
             <div className="flex flex-col">
               <span className="font-bold text-xl text-foreground leading-tight">LocaHub</span>

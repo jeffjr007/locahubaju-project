@@ -133,7 +133,6 @@ export default function Reservas() {
     const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL;
     
     if (!webhookUrl) {
-      console.warn("Webhook URL do n8n não configurada");
       return;
     }
 
@@ -169,8 +168,7 @@ export default function Reservas() {
         throw new Error(`Webhook falhou: ${response.statusText}`);
       }
     } catch (error) {
-      // Não mostrar erro para o usuário, apenas logar
-      console.error("Erro ao acionar webhook do n8n:", error);
+      // Erro silencioso - não mostrar para o usuário
     }
   };
 
@@ -194,10 +192,7 @@ export default function Reservas() {
   }) => {
     const webhookUrl = import.meta.env.VITE_N8N_WEBHOOKCANCEL_URL;
     
-    console.log("🔔 Webhook de cancelamento - Verificando URL:", webhookUrl ? "Configurada" : "Não configurada");
-    
     if (!webhookUrl) {
-      console.warn("⚠️ Webhook URL de cancelamento do n8n não configurada (VITE_N8N_WEBHOOKCANCEL_URL)");
       return;
     }
 
@@ -222,8 +217,6 @@ export default function Reservas() {
         acao: "cancelada",
       };
 
-      console.log("📤 Enviando webhook de cancelamento:", payload);
-
       const response = await fetch(webhookUrl, {
         method: "POST",
         headers: {
@@ -235,11 +228,8 @@ export default function Reservas() {
       if (!response.ok) {
         throw new Error(`Webhook falhou: ${response.statusText}`);
       }
-
-      console.log("✅ Webhook de cancelamento enviado com sucesso");
     } catch (error) {
-      // Não mostrar erro para o usuário, apenas logar
-      console.error("❌ Erro ao acionar webhook de cancelamento do n8n:", error);
+      // Erro silencioso - não mostrar para o usuário
     }
   };
 
@@ -365,12 +355,6 @@ export default function Reservas() {
         // Buscar informações completas do espaço
         const spaceData = spaces?.find(s => s.id === reservation.space_id);
 
-        console.log("Acionando webhook de cancelamento...", {
-          reservationId: reservation.id,
-          nome: profile.nome,
-          telefone: profile.telefone,
-        });
-
         await triggerN8nCancelWebhook({
           reservationId: reservation.id,
           // Informações do usuário
@@ -388,13 +372,6 @@ export default function Reservas() {
           endTime: endTime,
           horarioCompleto: horarioCompleto,
           notes: "",
-        });
-      } else {
-        console.warn("Webhook de cancelamento não acionado:", {
-          hasProfile: !!profile,
-          hasTelefone: !!profile?.telefone,
-          hasNome: !!profile?.nome,
-          hasSpaces: !!reservation.spaces,
         });
       }
 
