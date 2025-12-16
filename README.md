@@ -67,9 +67,12 @@ Crie um arquivo `.env` na raiz do projeto:
 VITE_SUPABASE_URL=sua_url_do_supabase
 VITE_SUPABASE_PUBLISHABLE_KEY=sua_chave_publica_do_supabase
 VITE_N8N_WEBHOOK_URL=https://seu-n8n.com/webhook/reservas
+VITE_N8N_WEBHOOKCANCEL_URL=https://seu-n8n.com/webhook/cancelamento
 ```
 
-**Nota:** A variável `VITE_N8N_WEBHOOK_URL` é opcional. Se configurada, o sistema acionará o webhook do n8n quando uma reserva for confirmada e o usuário tiver permitido notificações.
+**Nota:** As variáveis `VITE_N8N_WEBHOOK_URL` e `VITE_N8N_WEBHOOKCANCEL_URL` são opcionais. Se configuradas, o sistema acionará os webhooks do n8n quando:
+- Uma reserva for confirmada e o usuário tiver permitido notificações (`VITE_N8N_WEBHOOK_URL`)
+- Uma reserva for cancelada (`VITE_N8N_WEBHOOKCANCEL_URL`)
 
 4. **Execute as migrações do banco de dados**
 Acesse o SQL Editor no Supabase Dashboard e execute as migrações na ordem:
