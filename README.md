@@ -25,6 +25,12 @@ O LocaHubAju é uma plataforma web moderna e intuitiva para gerenciamento e loca
 - 🔒 Row Level Security (RLS) configurado no Supabase
 - 📱 Design totalmente responsivo
 - 🎨 Interface moderna com identidade visual própria
+- 💰 **Cálculo automático de orçamento** - Calcula valor da reserva baseado em preço por hora e duração
+- 💳 **Informações de pagamento** - Instruções para pagamento na hora ou via PIX com link para WhatsApp
+- 👨‍💼 **Painel Administrativo** - Tela exclusiva para admins gerenciar espaços (criar, editar, deletar)
+- 📈 **Relatórios e Estatísticas** - Visualização de faturamento, reservas por status, ocupação por espaço
+- ✏️ **Edição de reservas** - Usuários podem editar suas reservas ativas
+- 🛡️ **Sistema de permissões** - Controle de acesso baseado em roles (admin/user)
 
 ## 🛠️ Tecnologias Utilizadas
 
@@ -77,16 +83,26 @@ O sistema está disponível online em: **[https://locahubaju.vercel.app/](https:
    - Escolha a data
    - Defina horário de início e término
    - Adicione observações (opcional)
-4. **Permita notificações** (recomendado):
+4. **Visualize o orçamento**:
+   - O sistema calcula automaticamente o valor da reserva
+   - Baseado no preço por hora do espaço e duração selecionada
+   - Informações de pagamento aparecem abaixo do orçamento
+5. **Permita notificações** (recomendado):
    - Marque a opção "Permitir receber notificações e lembretes sobre as reservas"
    - Você receberá confirmações e lembretes via WhatsApp
-5. **Confirme a reserva**
+6. **Confirme a reserva**
    - Clique em "Confirmar Reserva"
    - Aguarde a confirmação
+   - **Pagamento:** Na hora ou via PIX para (79) 98822-6170
+   - **Importante:** Envie o comprovante no WhatsApp para verificação
 
 ### Visualizar e Gerenciar Reservas
 
 - **Minhas Reservas**: Acesse a página "Reservas" para ver todas suas reservas ativas
+- **Editar Reserva**: Clique no botão "Editar" na reserva desejada
+  - Altere a data e horário da reserva
+  - O espaço não pode ser alterado
+  - O sistema verifica conflitos automaticamente
 - **Cancelar Reserva**: Clique no botão "Cancelar" na reserva desejada
   - Um diálogo de confirmação aparecerá
   - Confirme o cancelamento
@@ -103,6 +119,27 @@ O sistema está disponível online em: **[https://locahubaju.vercel.app/](https:
 - Acesse "Espaços" no menu
 - Use os filtros para encontrar espaços por tipo (Salas, Coworking, Auditórios, Laboratórios)
 - Use a busca para encontrar espaços específicos
+- Visualize o preço por hora de cada espaço
+
+### Painel Administrativo (Apenas para Admins)
+
+Usuários com permissão de administrador têm acesso a funcionalidades exclusivas:
+
+1. **Gerenciar Espaços** (`/admin/espacos`)
+   - Criar novos espaços
+   - Editar espaços existentes
+   - Definir preço por hora de cada espaço
+   - Ativar/desativar espaços
+   - Deletar espaços
+
+2. **Relatórios** (`/admin/relatorios`)
+   - Visualizar faturamento total (apenas reservas confirmadas)
+   - Estatísticas de reservas (total, confirmadas, canceladas)
+   - Gráficos de ocupação por espaço e tipo
+   - Tabela detalhada com duração e valor de cada reserva
+   - Filtros por período (este mês, este ano, personalizado)
+
+**Nota:** Para ter acesso ao painel administrativo, é necessário ter a role "admin" atribuída no banco de dados.
 
 ## 📦 Instalação e Execução Local
 
@@ -142,6 +179,7 @@ Acesse o SQL Editor no Supabase Dashboard e execute as migrações na ordem:
 - `supabase/migrations/20251216012548_34411aea-f05e-4490-adb6-de25b2f86791.sql`
 - `supabase/migrations/20251216012820_13f78245-1561-48fb-bf29-36f191d0a43c.sql`
 - `supabase/migrations/20251216020000_update_handle_new_user_telefone.sql`
+- `supabase/migrations/20251216030000_add_preco_hora_spaces.sql` (adiciona campo preco_hora)
 
 5. **Inicie o servidor de desenvolvimento**
 ```bash
@@ -154,9 +192,14 @@ O aplicativo estará disponível em `http://localhost:8080`
 
 ### Tabelas
 - **profiles** - Perfis de usuário (nome, email, telefone)
-- **spaces** - Espaços disponíveis para locação
+- **spaces** - Espaços disponíveis para locação (inclui preco_hora)
 - **reservations** - Reservas realizadas
 - **user_roles** - Sistema de permissões (admin/user)
+
+### Campos Importantes
+- **spaces.preco_hora** - Preço por hora de locação do espaço (DECIMAL)
+- **reservations.status** - Status da reserva (confirmada, cancelada, pendente)
+- **user_roles.role** - Role do usuário (admin, user)
 
 ### Enums
 - **space_type**: sala, coworking, auditorio, laboratorio
@@ -236,13 +279,37 @@ O sistema está integrado com n8n para envio automático de notificações via W
 
 O sistema valida o formato durante o cadastro, mas é importante seguir o padrão: **DDD + número completo**.
 
+## 💰 Sistema de Orçamento e Pagamento
+
+### Cálculo de Orçamento
+- O sistema calcula automaticamente o valor da reserva
+- Fórmula: `Valor Total = (Horas + Minutos/60) × Preço por Hora`
+- O orçamento é exibido em tempo real no formulário de reserva
+- Mostra duração, preço por hora e valor total formatado em R$
+
+### Informações de Pagamento
+- **Pagamento na hora** ou via **PIX**
+- **Chave PIX:** (79) 98822-6170
+- **Importante:** Envie o comprovante no WhatsApp para verificação
+- Link direto para WhatsApp disponível no formulário de reserva
+
+### Preços Padrão (Configuráveis)
+- Salas: R$ 50,00/hora
+- Coworking: R$ 30,00/hora
+- Auditórios: R$ 100,00/hora
+- Laboratórios: R$ 80,00/hora
+
+**Nota:** Os preços podem ser personalizados por espaço através do painel administrativo.
+
 ## 🔐 Segurança
 
 - Row Level Security (RLS) habilitado em todas as tabelas
 - Políticas de segurança configuradas:
   - Usuários só veem suas próprias reservas
+  - Admins podem ver todas as reservas e espaços
   - Validação de conflitos de horário no banco de dados
   - Triggers para criação automática de perfis
+  - Rotas administrativas protegidas por autenticação e role
 
 ## 📄 Licença
 
