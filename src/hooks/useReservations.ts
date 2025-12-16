@@ -13,6 +13,12 @@ export interface Reservation {
   spaces?: {
     nome: string;
     tipo: string;
+    capacidade?: number;
+  };
+  profiles?: {
+    nome: string;
+    email: string;
+    telefone: string | null;
   };
 }
 
@@ -52,6 +58,34 @@ export function useAllReservations(startDate?: Date, endDate?: Date) {
         `)
         .neq("status", "cancelada")
         .order("data_inicio");
+
+      if (startDate) {
+        query = query.gte("data_inicio", startDate.toISOString());
+      }
+      if (endDate) {
+        query = query.lte("data_fim", endDate.toISOString());
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as Reservation[];
+    },
+  });
+}
+
+// Hook para buscar TODAS as reservas (incluindo canceladas) - apenas para admin/relatórios
+export function useAllReservationsForReports(startDate?: Date, endDate?: Date) {
+  return useQuery({
+    queryKey: ["all-reservations-reports", startDate?.toISOString(), endDate?.toISOString()],
+    queryFn: async () => {
+      let query = supabase
+        .from("reservations")
+        .select(`
+          *,
+          spaces (nome, tipo, capacidade),
+          profiles (nome, email, telefone)
+        `)
+        .order("data_inicio", { ascending: false });
 
       if (startDate) {
         query = query.gte("data_inicio", startDate.toISOString());
@@ -114,6 +148,37 @@ export function useCancelReservation() {
         .eq("id", reservationId);
 
       if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reservations"] });
+      queryClient.invalidateQueries({ queryKey: ["all-reservations"] });
+    },
+  });
+}
+
+interface UpdateReservationParams {
+  id: string;
+  space_id?: string;
+  data_inicio?: string;
+  data_fim?: string;
+}
+
+export function useUpdateReservation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: UpdateReservationParams) => {
+      const { id, ...updates } = params;
+      
+      const { data, error } = await supabase
+        .from("reservations")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reservations"] });

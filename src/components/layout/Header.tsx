@@ -17,10 +17,13 @@ import {
   X,
   LogIn,
   LogOut,
-  User
+  User,
+  Shield,
+  BarChart3
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import logoIcon from "@/assets/icone.png";
 
 const navItems = [
@@ -34,6 +37,7 @@ export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, signOut, loading } = useAuth();
+  const { data: isAdmin } = useIsAdmin();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleSignOut = async () => {
@@ -81,6 +85,36 @@ export function Header() {
                 </Link>
               );
             })}
+            {isAdmin && (
+              <>
+                <Link to="/admin/espacos">
+                  <Button
+                    variant={location.pathname === "/admin/espacos" ? "default" : "ghost"}
+                    size="sm"
+                    className={cn(
+                      "gap-2",
+                      location.pathname === "/admin/espacos" && "shadow-soft"
+                    )}
+                  >
+                    <Shield className="h-4 w-4" />
+                    Espaços
+                  </Button>
+                </Link>
+                <Link to="/admin/relatorios">
+                  <Button
+                    variant={location.pathname === "/admin/relatorios" ? "default" : "ghost"}
+                    size="sm"
+                    className={cn(
+                      "gap-2",
+                      location.pathname === "/admin/relatorios" && "shadow-soft"
+                    )}
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                    Relatórios
+                  </Button>
+                </Link>
+              </>
+            )}
           </nav>
 
           {/* Auth Buttons */}
@@ -161,6 +195,34 @@ export function Header() {
                   </Link>
                 );
               })}
+              {isAdmin && (
+                <>
+                  <Link 
+                    to="/admin/espacos"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Button
+                      variant={location.pathname === "/admin/espacos" ? "default" : "ghost"}
+                      className="w-full justify-start gap-2"
+                    >
+                      <Shield className="h-4 w-4" />
+                      Espaços
+                    </Button>
+                  </Link>
+                  <Link 
+                    to="/admin/relatorios"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Button
+                      variant={location.pathname === "/admin/relatorios" ? "default" : "ghost"}
+                      className="w-full justify-start gap-2"
+                    >
+                      <BarChart3 className="h-4 w-4" />
+                      Relatórios
+                    </Button>
+                  </Link>
+                </>
+              )}
               
               {user ? (
                 <>

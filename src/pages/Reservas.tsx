@@ -28,13 +28,22 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Clock, CheckCircle2, AlertCircle, Trash2, LogIn, User, Phone, Bell } from "lucide-react";
+import { CalendarIcon, Clock, CheckCircle2, AlertCircle, Trash2, LogIn, User, Phone, Bell, Edit } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useSpaces } from "@/hooks/useSpaces";
-import { useUserReservations, useCreateReservation, useCancelReservation } from "@/hooks/useReservations";
+import { useUserReservations, useCreateReservation, useCancelReservation, useUpdateReservation } from "@/hooks/useReservations";
+import { useBudget } from "@/hooks/useBudget";
 import { supabase } from "@/integrations/supabase/client";
 
 const timeSlots = [
@@ -52,11 +61,31 @@ export default function Reservas() {
   const { data: reservations, isLoading: reservationsLoading } = useUserReservations();
   const createReservation = useCreateReservation();
   const cancelReservation = useCancelReservation();
+  const updateReservation = useUpdateReservation();
 
   const [selectedSpace, setSelectedSpace] = useState(preselectedSpace || "");
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+
+  // Cálculo de orçamento
+  const selectedSpaceData = spaces?.find(s => s.id === selectedSpace);
+  const [startHour, startMin] = startTime ? startTime.split(":").map(Number) : [0, 0];
+  const [endHour, endMin] = endTime ? endTime.split(":").map(Number) : [0, 0];
+  
+  const dataInicioCalc = selectedDate ? (() => {
+    const date = new Date(selectedDate);
+    date.setHours(startHour, startMin, 0, 0);
+    return date;
+  })() : undefined;
+  
+  const dataFimCalc = selectedDate ? (() => {
+    const date = new Date(selectedDate);
+    date.setHours(endHour, endMin, 0, 0);
+    return date;
+  })() : undefined;
+
+  const budget = useBudget(selectedSpaceData?.preco_hora, dataInicioCalc, dataFimCalc);
   const [notes, setNotes] = useState("");
   const [allowNotifications, setAllowNotifications] = useState(true);
   
@@ -69,6 +98,16 @@ export default function Reservas() {
   // Estado para confirmação de cancelamento
   const [reservationToCancel, setReservationToCancel] = useState<string | null>(null);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  
+  // Estado para edição de reserva
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingReservation, setEditingReservation] = useState<{
+    id: string;
+    space_id: string;
+    date: Date;
+    startTime: string;
+    endTime: string;
+  } | null>(null);
 
   // Verificar se precisa preencher perfil
   useEffect(() => {
@@ -324,6 +363,64 @@ export default function Reservas() {
   const handleCancelClick = (reservationId: string) => {
     setReservationToCancel(reservationId);
     setShowCancelDialog(true);
+  };
+
+  const handleEditClick = (reservation: any) => {
+    const dataInicio = new Date(reservation.data_inicio);
+    const dataFim = new Date(reservation.data_fim);
+    
+    setEditingReservation({
+      id: reservation.id,
+      space_id: reservation.space_id,
+      date: dataInicio,
+      startTime: format(dataInicio, "HH:mm"),
+      endTime: format(dataFim, "HH:mm"),
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditReservation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingReservation) return;
+
+    if (!editingReservation.date || !editingReservation.startTime || !editingReservation.endTime) {
+      toast.error("Preencha todos os campos obrigatórios");
+      return;
+    }
+
+    if (editingReservation.startTime >= editingReservation.endTime) {
+      toast.error("O horário de término deve ser maior que o de início");
+      return;
+    }
+
+    const [startHour, startMin] = editingReservation.startTime.split(":").map(Number);
+    const [endHour, endMin] = editingReservation.endTime.split(":").map(Number);
+
+    const dataInicio = new Date(editingReservation.date);
+    dataInicio.setHours(startHour, startMin, 0, 0);
+
+    const dataFim = new Date(editingReservation.date);
+    dataFim.setHours(endHour, endMin, 0, 0);
+
+    try {
+      await updateReservation.mutateAsync({
+        id: editingReservation.id,
+        space_id: editingReservation.space_id,
+        data_inicio: dataInicio.toISOString(),
+        data_fim: dataFim.toISOString(),
+      });
+
+      toast.success("Reserva atualizada com sucesso!");
+      setIsEditDialogOpen(false);
+      setEditingReservation(null);
+    } catch (error: any) {
+      if (error.message?.includes("Conflito de horário")) {
+        toast.error("Este espaço já está reservado neste horário");
+      } else {
+        toast.error("Erro ao atualizar reserva: " + error.message);
+      }
+    }
   };
 
   const handleCancelReservation = async () => {
@@ -601,6 +698,36 @@ export default function Reservas() {
                     />
                   </div>
 
+                  {/* Budget Calculation */}
+                  {budget && selectedSpaceData && (
+                    <div className="p-4 bg-accent/10 border border-accent/30 rounded-lg space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center">
+                            <span className="text-accent font-bold text-sm">R$</span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">Orçamento Estimado</p>
+                            <p className="text-xs text-muted-foreground">
+                              {budget.horas}h {budget.minutos > 0 && `${budget.minutos}min`} • {selectedSpaceData.preco_hora?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}/hora
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-bold text-accent">{budget.valorFormatado}</p>
+                        </div>
+                      </div>
+                      <div className="pt-3 border-t border-accent/20">
+                        <p className="text-xs text-muted-foreground">
+                          💳 Pagamento na hora ou via PIX: <a href="https://wa.me/5579988226170" target="_blank" rel="noopener noreferrer" className="font-semibold text-accent hover:underline">(79) 98822-6170</a>
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          📱 Envie o comprovante no WhatsApp para verificação.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Notifications Permission */}
                   <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border border-border/50">
                     <div className="flex items-center gap-3 flex-1">
@@ -710,16 +837,28 @@ export default function Reservas() {
                             {format(new Date(reservation.data_inicio), "HH:mm")} - {format(new Date(reservation.data_fim), "HH:mm")}
                           </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10 w-full"
-                          onClick={() => handleCancelClick(reservation.id)}
-                          disabled={cancelReservation.isPending}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Cancelar
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => handleEditClick(reservation)}
+                            disabled={updateReservation.isPending}
+                          >
+                            <Edit className="w-4 h-4 mr-2" />
+                            Editar
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="flex-1 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleCancelClick(reservation.id)}
+                            disabled={cancelReservation.isPending}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Cancelar
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -786,6 +925,160 @@ export default function Reservas() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Dialog de Edição de Reserva */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Editar Reserva</DialogTitle>
+            <DialogDescription>
+              Atualize a data e horário da sua reserva
+            </DialogDescription>
+          </DialogHeader>
+
+          {editingReservation && (
+            <form onSubmit={handleEditReservation} className="space-y-6">
+              {/* Space Selection (readonly) */}
+              <div className="space-y-2">
+                <Label>Espaço</Label>
+                <Input
+                  value={spaces?.find(s => s.id === editingReservation.space_id)?.nome || ""}
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+
+              {/* Date Selection */}
+              <div className="space-y-2">
+                <Label>Data *</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !editingReservation.date && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {editingReservation.date ? (
+                        format(editingReservation.date, "PPP", { locale: ptBR })
+                      ) : (
+                        <span>Selecione uma data</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={editingReservation.date}
+                      onSelect={(date) => {
+                        if (date) {
+                          setEditingReservation({
+                            ...editingReservation,
+                            date,
+                          });
+                        }
+                      }}
+                      locale={ptBR}
+                      disabled={(date) => date < new Date()}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Time Selection */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-startTime">Horário Início *</Label>
+                  <Select
+                    value={editingReservation.startTime}
+                    onValueChange={(value) =>
+                      setEditingReservation({
+                        ...editingReservation,
+                        startTime: value,
+                      })
+                    }
+                  >
+                    <SelectTrigger id="edit-startTime">
+                      <SelectValue placeholder="Início" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {timeSlots.map((time) => (
+                        <SelectItem key={time} value={time}>
+                          {time}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-endTime">Horário Término *</Label>
+                  <Select
+                    value={editingReservation.endTime}
+                    onValueChange={(value) =>
+                      setEditingReservation({
+                        ...editingReservation,
+                        endTime: value,
+                      })
+                    }
+                  >
+                    <SelectTrigger id="edit-endTime">
+                      <SelectValue placeholder="Término" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {timeSlots.map((time) => (
+                        <SelectItem key={time} value={time}>
+                          {time}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Conflict Warning */}
+              {editingReservation.startTime && editingReservation.endTime && editingReservation.startTime >= editingReservation.endTime && (
+                <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-destructive">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span className="text-sm">O horário de término deve ser maior que o de início</span>
+                </div>
+              )}
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditDialogOpen(false);
+                    setEditingReservation(null);
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  variant="accent"
+                  disabled={updateReservation.isPending}
+                >
+                  {updateReservation.isPending ? (
+                    <span className="flex items-center gap-2">
+                      <span className="animate-spin rounded-full h-4 w-4 border-2 border-accent-foreground border-t-transparent" />
+                      Atualizando...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4" />
+                      Salvar Alterações
+                    </span>
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

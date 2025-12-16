@@ -10,6 +10,9 @@ import Agenda from "./pages/Agenda";
 import Reservas from "./pages/Reservas";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import AdminEspacos from "./pages/Admin/Espacos";
+import AdminRelatorios from "./pages/Admin/Relatorios";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +29,22 @@ const App = () => (
             <Route path="/agenda" element={<Agenda />} />
             <Route path="/reservas" element={<Reservas />} />
             <Route path="/auth" element={<Auth />} />
+            <Route
+              path="/admin/espacos"
+              element={
+                <ProtectedRoute>
+                  <AdminEspacos />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/relatorios"
+              element={
+                <ProtectedRoute>
+                  <AdminRelatorios />
+                </ProtectedRoute>
+              }
+            />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

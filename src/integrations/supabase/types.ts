@@ -92,6 +92,7 @@ export type Database = {
           id: string
           imagem_url: string | null
           nome: string
+          preco_hora: number | null
           tipo: Database["public"]["Enums"]["space_type"]
         }
         Insert: {
@@ -102,6 +103,7 @@ export type Database = {
           id?: string
           imagem_url?: string | null
           nome: string
+          preco_hora?: number | null
           tipo: Database["public"]["Enums"]["space_type"]
         }
         Update: {
@@ -112,6 +114,7 @@ export type Database = {
           id?: string
           imagem_url?: string | null
           nome?: string
+          preco_hora?: number | null
           tipo?: Database["public"]["Enums"]["space_type"]
         }
         Relationships: []
