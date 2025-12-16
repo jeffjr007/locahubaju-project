@@ -160,6 +160,69 @@ export default function Reservas() {
     }
   };
 
+  const triggerN8nCancelWebhook = async (reservationData: {
+    reservationId: string;
+    // Informações do usuário
+    nome: string;
+    telefone: string;
+    email: string;
+    // Informações do espaço
+    spaceName: string;
+    spaceType: string;
+    spaceCapacity: number;
+    spaceDescription: string | null;
+    // Informações da reserva
+    date: string;
+    startTime: string;
+    endTime: string;
+    horarioCompleto: string;
+    notes: string;
+  }) => {
+    const webhookUrl = import.meta.env.VITE_N8N_WEBHOOKCANCEL_URL;
+    
+    if (!webhookUrl) {
+      console.warn("Webhook URL de cancelamento do n8n não configurada");
+      return;
+    }
+
+    try {
+      const payload = {
+        // Informações do usuário
+        nome: reservationData.nome,
+        telefone: reservationData.telefone,
+        email: reservationData.email,
+        // Informações do espaço
+        espaco: reservationData.spaceName,
+        tipoEspaco: reservationData.spaceType,
+        capacidade: reservationData.spaceCapacity,
+        descricaoEspaco: reservationData.spaceDescription || "",
+        // Informações da reserva
+        data: reservationData.date,
+        horarioInicio: reservationData.startTime,
+        horarioFim: reservationData.endTime,
+        horarioCompleto: reservationData.horarioCompleto,
+        observacoes: reservationData.notes || "",
+        reservationId: reservationData.reservationId,
+        acao: "cancelada",
+      };
+
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Webhook falhou: ${response.statusText}`);
+      }
+    } catch (error) {
+      // Não mostrar erro para o usuário, apenas logar
+      console.error("Erro ao acionar webhook de cancelamento do n8n:", error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -250,7 +313,49 @@ export default function Reservas() {
 
   const handleCancelReservation = async (reservationId: string) => {
     try {
+      // Buscar os dados completos da reserva antes de cancelar
+      const reservation = reservations?.find(r => r.id === reservationId);
+      
+      if (!reservation) {
+        toast.error("Reserva não encontrada");
+        return;
+      }
+
+      // Cancelar a reserva
       await cancelReservation.mutateAsync(reservationId);
+
+      // Se o usuário tem telefone e perfil, acionar webhook de cancelamento
+      if (profile?.telefone && profile?.nome && reservation.spaces) {
+        const dataInicio = new Date(reservation.data_inicio);
+        const dataFim = new Date(reservation.data_fim);
+        const date = format(dataInicio, "dd/MM/yyyy");
+        const startTime = format(dataInicio, "HH:mm");
+        const endTime = format(dataFim, "HH:mm");
+        const horarioCompleto = `${date} das ${startTime} às ${endTime}`;
+
+        // Buscar informações completas do espaço
+        const spaceData = spaces?.find(s => s.id === reservation.space_id);
+
+        await triggerN8nCancelWebhook({
+          reservationId: reservation.id,
+          // Informações do usuário
+          nome: profile.nome,
+          telefone: profile.telefone,
+          email: profile.email,
+          // Informações do espaço
+          spaceName: reservation.spaces.nome || "Espaço",
+          spaceType: reservation.spaces.tipo || "",
+          spaceCapacity: spaceData?.capacidade || 0,
+          spaceDescription: spaceData?.descricao || null,
+          // Informações da reserva
+          date: date,
+          startTime: startTime,
+          endTime: endTime,
+          horarioCompleto: horarioCompleto,
+          notes: "",
+        });
+      }
+
       toast.success("Reserva cancelada com sucesso");
     } catch (error: any) {
       toast.error("Erro ao cancelar reserva: " + error.message);
