@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { format, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear } from "date-fns";
+import { format, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear, differenceInHours, differenceInMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { 
   CalendarIcon, 
