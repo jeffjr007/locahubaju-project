@@ -2,6 +2,8 @@
 
 Plataforma inteligente para locação de espaços de inovação em Aracaju.
 
+**🌐 Acesso Online:** [https://locahubaju.vercel.app/](https://locahubaju.vercel.app/)
+
 ## 📋 Sobre o Projeto
 
 O LocaHubAju é uma plataforma web moderna e intuitiva para gerenciamento e locação de espaços de inovação, inspirada em hubs como o CAJUHUB. O sistema permite que usuários reservem salas de reunião, ambientes de trabalho compartilhados, auditórios e laboratórios de tecnologia de forma simples e eficiente.
@@ -41,7 +43,68 @@ O LocaHubAju é uma plataforma web moderna e intuitiva para gerenciamento e loca
   - Supabase (PostgreSQL + Auth + RLS)
   - Row Level Security para segurança de dados
 
-## 📦 Instalação
+## 🚀 Como Usar o Sistema
+
+### Acesso Online
+O sistema está disponível online em: **[https://locahubaju.vercel.app/](https://locahubaju.vercel.app/)**
+
+### Primeiro Acesso
+
+1. **Criar Conta**
+   - Acesse a plataforma e clique em "Entrar"
+   - Selecione "Criar conta"
+   - Preencha os dados:
+     - **Nome completo** (obrigatório)
+     - **Email** (obrigatório)
+     - **Telefone** (obrigatório) - **Importante:** Use o formato correto: DDD + número sem parênteses ou traços
+       - ✅ Formato correto: `79 988226170`
+       - ❌ Formato incorreto: `(79) 98822-6170` ou `79988226170`
+     - **Senha** (mínimo 6 caracteres)
+
+2. **Login**
+   - Você pode usar as credenciais do formulário do Jovem Tech
+   - **Recomendação:** Crie seu próprio login para receber notificações de confirmação e cancelamento de reservas via WhatsApp
+   - O telefone cadastrado será usado para envio de mensagens automáticas
+
+### Como Fazer uma Reserva
+
+1. **Navegue até "Reservas"** no menu superior
+2. **Complete seu perfil** (se necessário):
+   - Nome completo
+   - Telefone no formato correto (DDD + número)
+3. **Preencha o formulário de reserva**:
+   - Selecione o espaço desejado
+   - Escolha a data
+   - Defina horário de início e término
+   - Adicione observações (opcional)
+4. **Permita notificações** (recomendado):
+   - Marque a opção "Permitir receber notificações e lembretes sobre as reservas"
+   - Você receberá confirmações e lembretes via WhatsApp
+5. **Confirme a reserva**
+   - Clique em "Confirmar Reserva"
+   - Aguarde a confirmação
+
+### Visualizar e Gerenciar Reservas
+
+- **Minhas Reservas**: Acesse a página "Reservas" para ver todas suas reservas ativas
+- **Cancelar Reserva**: Clique no botão "Cancelar" na reserva desejada
+  - Um diálogo de confirmação aparecerá
+  - Confirme o cancelamento
+  - Você receberá uma notificação de cancelamento via WhatsApp (se tiver notificações habilitadas)
+
+### Visualizar Agenda
+
+- Acesse "Agenda" no menu para ver a ocupação dos espaços
+- Visualize por dia ou semana
+- Use o calendário lateral para navegar entre datas
+
+### Explorar Espaços
+
+- Acesse "Espaços" no menu
+- Use os filtros para encontrar espaços por tipo (Salas, Coworking, Auditórios, Laboratórios)
+- Use a busca para encontrar espaços específicos
+
+## 📦 Instalação e Execução Local
 
 ### Pré-requisitos
 - Node.js 18+ (recomendado usar nvm)
@@ -52,8 +115,8 @@ O LocaHubAju é uma plataforma web moderna e intuitiva para gerenciamento e loca
 
 1. **Clone o repositório**
 ```bash
-git clone <URL_DO_REPOSITORIO>
-cd locahubaju
+git clone https://github.com/jeffjr007/locahubaju-project.git
+cd locahubaju-project
 ```
 
 2. **Instale as dependências**
@@ -121,6 +184,55 @@ npm run preview
 - `npm run preview` - Visualiza o build de produção
 - `npm run lint` - Executa o linter
 
+## 🔔 Integração com n8n (Notificações WhatsApp)
+
+O sistema está integrado com n8n para envio automático de notificações via WhatsApp.
+
+### Como Funciona
+
+1. **Acionamento do Webhook**
+   - Quando o usuário confirma uma reserva (e permite notificações) ou cancela uma reserva
+   - O sistema aciona automaticamente o webhook do n8n configurado
+   - Os dados da reserva e do cliente são enviados via POST em formato JSON
+
+2. **Dados Enviados ao Webhook**
+   ```json
+   {
+     "nome": "Nome do Cliente",
+     "telefone": "79 988226170",
+     "email": "cliente@email.com",
+     "espaco": "Sala de Reunião Alpha",
+     "tipoEspaco": "sala",
+     "capacidade": 10,
+     "descricaoEspaco": "Descrição do espaço",
+     "data": "15/12/2024",
+     "horarioInicio": "09:00",
+     "horarioFim": "11:00",
+     "horarioCompleto": "15/12/2024 das 09:00 às 11:00",
+     "observacoes": "Observações adicionais",
+     "reservationId": "uuid-da-reserva",
+     "acao": "confirmada" // ou "cancelada" para cancelamentos
+   }
+   ```
+
+3. **Processamento no n8n**
+   - O n8n recebe os dados do webhook
+   - Os dados são organizados e processados
+   - Um código JavaScript gera um delay aleatório entre 20 e 40 segundos
+   - Durante esse tempo, é enviada uma mensagem de "digitando..." para simular digitação humana
+   - Após o delay, é enviada a mensagem de confirmação ou cancelamento via WhatsApp
+
+### Configuração do Telefone
+
+**⚠️ IMPORTANTE:** O telefone deve estar no formato correto para o envio funcionar:
+- ✅ **Formato correto:** `79 988226170` (DDD + espaço + número)
+- ❌ **Formatos incorretos:** 
+  - `(79) 98822-6170`
+  - `79988226170`
+  - `+55 79 98822-6170`
+
+O sistema valida o formato durante o cadastro, mas é importante seguir o padrão: **DDD + espaço + número completo**.
+
 ## 🔐 Segurança
 
 - Row Level Security (RLS) habilitado em todas as tabelas
@@ -135,6 +247,10 @@ npm run preview
 Este projeto foi desenvolvido como parte de um desafio de programação acadêmico.
 
 ## 👤 Autor
+
+**Desenvolvido por:** Jeferson Junior  
+**Email:** jeffjr007z@gmail.com  
+**Telefone:** (79) 98822-6170
 
 Desenvolvido para o ecossistema de inovação de Aracaju.
 
